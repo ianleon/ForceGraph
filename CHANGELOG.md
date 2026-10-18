@@ -7,6 +7,8 @@ versions may contain breaking changes.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-18
+
 ### Changed (breaking)
 - `ForceGraphView` customizes nodes with modifiers instead of initializer closures:
   `.nodeLabel { … }`, `.nodeColor { … }` and `.nodeRadius { … }` replace the `label:`,
@@ -57,5 +59,6 @@ versions may contain breaking changes.
   accessibility children, for iOS 17, macOS 14 and visionOS 1.
 - `ForceGraphStyle`.
 
-[Unreleased]: https://github.com/ianleon/ForceGraph/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/ianleon/ForceGraph/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/ianleon/ForceGraph/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/ianleon/ForceGraph/releases/tag/0.1.0
