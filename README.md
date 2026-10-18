@@ -1,7 +1,7 @@
 # ForceGraph
 
-[![Swift versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fiancorec%2FForceGraph%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/iancorec/ForceGraph)
-[![Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fiancorec%2FForceGraph%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/iancorec/ForceGraph)
+[![Swift versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fiancorec%2FForceGraph%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/ianleon/ForceGraph)
+[![Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fiancorec%2FForceGraph%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/ianleon/ForceGraph)
 
 A small, dependency-free force-directed graph for Swift: a deterministic
 Fruchterman–Reingold layout you can run anywhere, and a SwiftUI `Canvas` view
@@ -74,10 +74,10 @@ disable) so the settling is visible even for small graphs.
 ## Add to a project
 
 In Xcode: *File → Add Package Dependencies…* and enter
-`https://github.com/iancorec/ForceGraph`, or in `Package.swift`:
+`https://github.com/ianleon/ForceGraph`, or in `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/iancorec/ForceGraph.git", from: "0.1.0")
+.package(url: "https://github.com/ianleon/ForceGraph.git", from: "0.1.0")
 ```
 
 For local development, add the folder with *Add Local…* or `.package(path: "../ForceGraph")`.
