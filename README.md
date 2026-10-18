@@ -1,7 +1,7 @@
 # ForceGraph
 
-[![Swift versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fiancorec%2FForceGraph%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/ianleon/ForceGraph)
-[![Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fiancorec%2FForceGraph%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/ianleon/ForceGraph)
+[![Swift versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fianleon%2FForceGraph%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/ianleon/ForceGraph)
+[![Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fianleon%2FForceGraph%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/ianleon/ForceGraph)
 
 A small, dependency-free force-directed graph for Swift: a deterministic
 Fruchterman–Reingold layout you can run anywhere, and a SwiftUI `Canvas` view
