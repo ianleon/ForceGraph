@@ -197,5 +197,129 @@ import Testing
         calls = 0
         _ = layout.run(reportingEvery: 0) { _ in calls += 1 }
         #expect(calls == 95)
+
+        // The cadence defaults to 8, like stream().
+        layout.configuration.iterations = 40
+        calls = 0
+        _ = layout.run { _ in calls += 1 }
+        #expect(calls == 5)
+    }
+
+    // MARK: - Warm start
+
+    /// A 100-node binary tree, the shape of a typical note graph.
+    private var tree: ForceLayout<Int> {
+        ForceLayout(nodes: Array(0..<100), edges: (1..<100).map { GraphEdge($0, ($0 - 1) / 2) })
+    }
+
+    @Test func warmStartAtZeroTemperatureKeepsEveryPosition() {
+        let settled = tree.run()
+        var warm = tree
+        warm.initialPositions = settled
+        warm.configuration.warmStartTemperature = 0
+        #expect(warm.run() == settled)
+    }
+
+    @Test func warmStartAbsorbsANewNodeWithoutScramblingTheRest() {
+        let before = tree.run()
+        let oldNodes = tree.nodes
+        var grown = tree
+        grown.nodes.append(100)
+        grown.edges.append(GraphEdge(100, 5))
+
+        var warm = grown
+        warm.initialPositions = before
+        let warmResult = warm.run()
+        let coldResult = grown.run()
+
+        func meanMovement(_ after: [Int: CGPoint]) -> CGFloat {
+            oldNodes.map { distance(before[$0]!, after[$0]!) }.reduce(0, +) / CGFloat(oldNodes.count)
+        }
+        let xs = before.values.map(\.x), ys = before.values.map(\.y)
+        let extent = max(xs.max()! - xs.min()!, ys.max()! - ys.min()!)
+        let spacing = (grown.configuration.area / Double(grown.nodes.count)).squareRoot()
+
+        #expect(isFinite(warmResult))
+        #expect(meanMovement(warmResult) < meanMovement(coldResult))
+        #expect(meanMovement(warmResult) < extent * 0.1)
+        // The new node grows out of the node it links to.
+        #expect(distance(warmResult[100]!, warmResult[5]!) < spacing * 3)
+    }
+
+    @Test func warmStartIsDeterministicAndPartOfTheInput() {
+        var warm = tree
+        warm.initialPositions = [0: CGPoint(x: 10, y: 10), 1: CGPoint(x: -40, y: 25)]
+        #expect(warm.run() == warm.run())
+        #expect(warm != tree)
+        #expect(warm.run() != tree.run())
+    }
+
+    @Test func unusableInitialPositionsAreIgnored() {
+        var layout = ForceLayout(nodes: ["a", "b", "c"], edges: [.init("a", "b")])
+        let cold = layout.run()
+        layout.initialPositions = ["ghost": CGPoint(x: 5, y: 5), "a": CGPoint(x: CGFloat.nan, y: 0)]
+        #expect(layout.run() == cold)
+    }
+
+    // MARK: - Public API surface
+
+    @Test func steppingASimulationMatchesRun() {
+        let layout = ForceLayout(nodes: Array(0..<30), edges: (1..<30).map { GraphEdge($0, $0 / 3) })
+        var simulation = layout.makeSimulation()
+        #expect(simulation.totalSteps == 200)
+        #expect(simulation.completedSteps == 0)
+        while !simulation.isFinished { simulation.step() }
+        #expect(simulation.completedSteps == 200)
+        #expect(simulation.snapshot() == layout.run())
+
+        // Stepping a finished simulation changes nothing.
+        let settled = simulation.snapshot()
+        simulation.step()
+        #expect(simulation.completedSteps == 200)
+        #expect(simulation.snapshot() == settled)
+
+        var empty = ForceLayout<Int>(nodes: [], edges: []).makeSimulation()
+        #expect(empty.totalSteps == 1)
+        empty.step()
+        #expect(empty.isFinished && empty.snapshot().isEmpty)
+    }
+
+    @Test func uniqueEdgesCollapseDuplicatesAndFollowNodeOrder() {
+        let layout = ForceLayout(
+            nodes: ["a", "b", "c"],
+            edges: [.init("c", "a"), .init("b", "a"), .init("a", "b"), .init("b", "b"), .init("a", "ghost")]
+        )
+        #expect(layout.uniqueEdges == [GraphEdge("a", "b"), GraphEdge("a", "c")])
+        #expect(layout.degrees == ["a": 2, "b": 1, "c": 1])
+        #expect(layout.degrees == ForceLayout.degrees(nodes: layout.nodes, edges: layout.edges))
+    }
+
+    @Test func layoutsAreHashable() {
+        let a = ForceLayout(nodes: [1, 2], edges: [.init(1, 2)])
+        var b = a
+        #expect(a == b)
+        #expect(Set([a, b]).count == 1)
+        b.configuration.seed = 1
+        #expect(a != b)
+        b = a
+        b.initialPositions = [1: .zero]
+        #expect(a != b)
+    }
+
+    @Test func memberwiseConfigurationMatchesTheDefaults() {
+        #expect(ForceLayoutConfiguration() == ForceLayoutConfiguration(
+            iterations: 200, area: 360_000, initialTemperature: 120, warmStartTemperature: 10,
+            cooling: 0.96, minimumTemperature: 1.5, gravity: 0.5, seed: 0x5EED
+        ))
+        let tuned = ForceLayoutConfiguration(area: 640_000)
+        #expect(tuned.area == 640_000)
+        #expect(tuned.iterations == 200)
+    }
+
+    @Test func edgesAreCodableAndDescribeThemselves() throws {
+        let edges = [GraphEdge("a", "b"), GraphEdge("b", "c")]
+        let data = try JSONEncoder().encode(edges)
+        #expect(try JSONDecoder().decode([GraphEdge<String>].self, from: data) == edges)
+        #expect(GraphEdge(1, 2).description == "1 -- 2")
     }
 }
