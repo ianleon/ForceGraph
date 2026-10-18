@@ -5,10 +5,11 @@ import CoreGraphics
 
 /// An undirected edge between two node identifiers.
 ///
-/// Undirected: `GraphEdge(a, b)` and `GraphEdge(b, a)` are the same edge. `source` and
-/// `target` only preserve the order the edge was created with. Duplicate and reversed
-/// pairs collapse to one edge, and self-loops are ignored, both in ``ForceLayout`` and in
-/// ``ForceGraphView``; ``ForceLayout/uniqueEdges`` lists the edges that remain.
+/// Undirected: ``ForceLayout`` and ``ForceGraphView`` treat `GraphEdge(a, b)` and
+/// `GraphEdge(b, a)` as the same edge. `source` and `target` only preserve the order the
+/// edge was created with, and `==` compares that ordered pair, so the two values above are
+/// not equal. Duplicate and reversed pairs collapse to one edge, and self-loops are ignored,
+/// in both the layout and the view; ``ForceLayout/uniqueEdges`` lists the edges that remain.
 public struct GraphEdge<ID: Hashable & Sendable>: Hashable, Sendable {
     /// One end of the edge. Order does not matter: the edge is undirected.
     public var source: ID
