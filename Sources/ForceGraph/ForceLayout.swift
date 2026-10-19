@@ -10,6 +10,8 @@ import CoreGraphics
 /// edge was created with, and `==` compares that ordered pair, so the two values above are
 /// not equal. Duplicate and reversed pairs collapse to one edge, and self-loops are ignored,
 /// in both the layout and the view; ``ForceLayout/uniqueEdges`` lists the edges that remain.
+/// ``ForceSimulation`` lays edges out the same way but also keeps their direction, in
+/// ``ForceSimulation/edges`` and ``ForceSimulation/Link``, for drawing arrows.
 public struct GraphEdge<ID: Hashable & Sendable>: Hashable, Sendable {
     /// One end of the edge. Order does not matter: the edge is undirected.
     public var source: ID
