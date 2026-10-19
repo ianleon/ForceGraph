@@ -4,8 +4,9 @@
 [![Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fianleon%2FForceGraph%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/ianleon/ForceGraph)
 
 A small, dependency-free force-directed graph for Swift: a deterministic
-Fruchterman–Reingold layout you can run anywhere, and a SwiftUI `Canvas` view
-that animates the layout settling, with pan, zoom, fit-to-view and tap handling.
+Fruchterman–Reingold layout you can run anywhere, a live d3-force-style simulation
+with dragging, and a SwiftUI `Canvas` view that animates the layout settling, with
+pan, zoom, fit-to-view and tap handling.
 
 ![A ForceGraph layout of a 33-note sample graph: three clusters of blue nodes joined by edges, with hub notes labelled](Docs/hero.png)
 
@@ -16,7 +17,8 @@ Extracted from Basalt, a Markdown notes app, where it draws the note graph.
   too (not yet tested there).
 - Requires the Swift 6.0 toolchain (Xcode 16 or later); Swift 6 language mode.
 - `ForceLayout` has no UI dependency — drive a `Canvas`, an AppKit view, or a test with it.
-- O(n²) per step; comfortable up to ~1,500 nodes.
+- `ForceLayout` is O(n²) per step, comfortable up to ~1,500 nodes. `ForceSimulation`
+  uses Barnes–Hut: about 1 ms per tick at 1,000 nodes and 7 ms at 5,000 (M1 Max, release).
 
 ## Add to a project
 
@@ -146,6 +148,36 @@ so call it off the main thread for large graphs, or use `stream()`, which runs
 on a background task and paces its snapshots so the settling is visible even for
 small graphs.
 
+### Live simulation
+
+`ForceSimulation` is a port of [d3-force](https://github.com/d3/d3-force): a simulation
+you advance once per frame that drifts while warm, cools to a stop, and reheats when
+something changes. It has link, many-body (Barnes–Hut), position, collision and center
+forces with d3's semantics and defaults, fixed positions for dragging, and keeps node
+positions when nodes and edges are added or removed while it runs.
+
+```swift
+var simulation = ForceSimulation(
+    nodes: ["a", "b", "c"],
+    edges: [GraphEdge("a", "b"), GraphEdge("b", "c")],
+    configuration: ObsidianGraphForces.defaults.configuration
+)
+simulation.step()                                  // once per frame, while it returns true
+simulation.beginDrag("b", at: CGPoint(x: 40, y: 0)) // on touch-down
+simulation.drag("b", to: CGPoint(x: 80, y: 10))     // as the finger moves
+simulation.endDrag("b")                             // on release: let go, not pinned
+simulation.update(nodes: ["a", "b", "c", "d"],
+                  edges: [GraphEdge("a", "b"), GraphEdge("b", "c"), GraphEdge("c", "d")])
+let positions = simulation.snapshot()
+```
+
+`ObsidianGraphForces` decodes the force sliders from an Obsidian vault's
+`.obsidian/graph.json` (center, repel, link force, link distance) and maps them to the
+simulation. The "Live simulation" article in the documentation covers the forces,
+dragging, arrows, Reduce Motion, running off the main actor, the slider mapping and the
+measured tick times. The simulation's algorithms are ported from d3-force and
+d3-quadtree (ISC License); see [NOTICE](NOTICE).
+
 ## Test
 
 ```sh
@@ -153,7 +185,9 @@ swift test          # unit tests
 Scripts/check.sh    # the full local matrix
 ```
 
-`Scripts/check.sh` runs `swift build`, `swift test` and a warnings-as-errors build,
+`Scripts/check.sh` runs `swift build`, `swift test`, the release-mode performance
+tests (`swift test -c release -Xswiftc -enable-testing --filter ForceSimulationPerformance`)
+and a warnings-as-errors build,
 then builds the library with `xcodebuild` for macOS and the iOS and visionOS
 simulators (and the tvOS and watchOS simulators when their SDKs are installed) and
 builds the DocC archive.
@@ -161,4 +195,5 @@ Derived data goes to `/tmp/ForceGraph-check`. Run it before tagging a release.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). `ForceSimulation` ports d3-force and d3-quadtree, ISC
+License; see [NOTICE](NOTICE).

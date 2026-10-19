@@ -11,12 +11,12 @@ import ForceGraph
 ///
 ///     swift test -c release -Xswiftc -enable-testing --filter ForceSimulationPerformance
 ///
-/// (`Scripts/check.sh` does.) Recorded on 2026-10-19, release build:
+/// (`Scripts/check.sh` does.) Recorded on 2026-10-19, release build, on a busy machine:
 ///
-/// | Nodes | Links | Apple M-series Mac (arm64) | iPhone 18 Pro simulator |
-/// |-------|-------|----------------------------|-------------------------|
-/// | 1,000 | 1,333 | 0.9 ms                     | see <doc:LiveSimulation> |
-/// | 5,000 | 6,661 | 6.4 ms                     | see <doc:LiveSimulation> |
+/// | Nodes | Links | Apple M1 Max Mac | iPhone 18 Pro simulator (iOS 27) |
+/// |-------|-------|------------------|----------------------------------|
+/// | 1,000 | 1,333 | 0.95 ms          | 1.3 ms                           |
+/// | 5,000 | 6,661 | 6.7 ms           | 8.4 ms                           |
 ///
 /// The budgets are deliberately looser than those numbers so slower machines pass: a
 /// 120 Hz frame (8.3 ms) at 1,000 nodes and a 60 Hz frame (16.7 ms) at 5,000.

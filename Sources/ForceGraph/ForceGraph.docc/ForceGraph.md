@@ -1,17 +1,26 @@
 # ``ForceGraph``
 
-A deterministic force-directed graph layout and a SwiftUI `Canvas` view that draws it.
+A deterministic force-directed graph layout, a live d3-force-style simulation, and a
+SwiftUI `Canvas` view that draws them.
 
 ## Overview
 
-ForceGraph has two parts. ``ForceLayout`` runs a Fruchterman–Reingold simulation over
+ForceGraph has three parts. ``ForceLayout`` runs a Fruchterman–Reingold simulation over
 a list of node identifiers and ``GraphEdge`` values and returns a position for every node.
 It has no UI dependency, and the same nodes, edges, configuration and seed always produce
 the same layout. ``ForceGraphView`` draws that layout with SwiftUI `Canvas`, animating it
 as it settles, with pan, zoom, fit-to-view and tap handling.
 
-The view is available on iOS 17, macOS 14 and visionOS 1; the layout also builds for
-tvOS 16 and watchOS 9. Layout cost is O(n²) per step, comfortable up to roughly 1,500 nodes.
+``ForceSimulation`` is the live alternative to ``ForceLayout``: a port of d3-force that
+keeps running while it is warm, lets nodes be dragged with the rest of the graph
+responding, and absorbs added and removed nodes without losing its shape. It uses
+Barnes–Hut, so a tick at 5,000 nodes takes a few milliseconds, and
+``ObsidianGraphForces`` maps the force sliders of Obsidian's graph view onto it. See
+<doc:LiveSimulation>.
+
+The view is available on iOS 17, macOS 14 and visionOS 1; the layout and the simulation
+also build for tvOS 16 and watchOS 9. ``ForceLayout`` costs O(n²) per step, comfortable up
+to roughly 1,500 nodes; ``ForceSimulation`` costs O(n log n) per tick.
 
 ## Getting started
 
@@ -66,6 +75,13 @@ let updated = next.run()
 ```
 
 ## Topics
+
+### Live simulation
+
+- <doc:LiveSimulation>
+- ``ForceSimulation``
+- ``ForceSimulationConfiguration``
+- ``ObsidianGraphForces``
 
 ### Layout
 

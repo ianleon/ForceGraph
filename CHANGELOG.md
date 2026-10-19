@@ -7,6 +7,39 @@ versions may contain breaking changes.
 
 ## [Unreleased]
 
+### Added
+- `ForceSimulation`, a live force simulation ported from d3-force, next to `ForceLayout`:
+  alpha, `alphaMin`, `alphaDecay`, `alphaTarget` and `velocityDecay` with d3's defaults;
+  `tick(_:)`, `step()` (ticks while warm and reports whether it is still running),
+  `settle(maximumTicks:)` for Reduce Motion, and `reheat(to:)`. Deterministic for a seed,
+  `Sendable`, and usable off the main actor; a tick allocates nothing once it has run.
+- Forces, configured with `ForceSimulationConfiguration`: link springs with d3's
+  degree-based default strength and bias (`LinkForce`), Barnes–Hut many-body repulsion
+  with `theta`, `distanceMin` and `distanceMax` (`ManyBodyForce`), a pull toward a point
+  (`PositionForce`, d3's `forceX`/`forceY`), collision with radii that grow with degree
+  (`CollisionForce`), and optional re-centering (`CenterForce`).
+- Dragging: `beginDrag(_:at:)`, `drag(_:to:)` and `endDrag(_:)` hold a node at the
+  pointer and keep the graph warm (`dragAlphaTarget`, 0.3), then let it go unpinned;
+  several nodes can be held at once. `fix(_:at:)`, `release(_:)`, `fixedPosition(of:)` and
+  `setPosition(_:for:)` for fixed positions (d3's `fx`/`fy`).
+- Changing the graph while it runs: `update(nodes:edges:reheatingTo:)`, `add(_:at:)`,
+  `remove(_:)`, `add(_ edge:)` and `remove(_ edge:)` keep every remaining node's position,
+  velocity and fixed position, start new nodes beside their neighbours, and reheat.
+- Directed edges for arrows: `ForceSimulation.edges` keeps each edge's direction and every
+  `ForceSimulation.Link` says whether it runs forward, backward or both.
+- Reading the state: `nodes`, `links`, `position(at:)`, `position(of:)`, `positions()`,
+  `snapshot()`, `velocity(of:)`, `radius(at:)`, `setRadius(_:for:)`, `degree(at:)`,
+  `bounds`, `kineticEnergy`, and hit testing with `node(at:slop:)` and
+  `nearestNode(to:within:)`.
+- `ObsidianGraphForces`: the center, repel, link force and link distance sliders of
+  Obsidian's graph view, with their ranges and defaults, decoded from and encoded to the
+  keys of `.obsidian/graph.json`, and mapped to a `ForceSimulationConfiguration`.
+- The "Live simulation" DocC article, with the slider mapping and measured tick times
+  (about 1 ms at 1,000 nodes and 7 ms at 5,000 on an M1 Max, 1.3 ms and 8.4 ms on the
+  iPhone 18 Pro simulator, release build).
+- `NOTICE`, crediting d3-force and d3-quadtree (ISC License), which the simulation ports.
+- Release-mode performance tests at 1,000 and 5,000 nodes, run by `Scripts/check.sh`.
+
 ## [0.2.0] - 2026-10-18
 
 ### Changed (breaking)
