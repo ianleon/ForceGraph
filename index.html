@@ -17,7 +17,7 @@
         <section class="graph-panel" aria-label="Interactive graph playground">
             <div class="graph-heading"><span class="eyebrow">IDEAS, CONNECTED</span><h1>Give your thoughts<br>some gravity.</h1><p>A native Swift force engine. Right here in your browser.</p></div>
             <canvas id="graph" tabindex="0" aria-label="Interactive network. Drag nodes to move them, drag empty space to pan, and scroll or pinch to zoom. Use plus and minus to zoom, zero to fit, and left or right arrow keys to select nodes. Use the controls to pause or reset the graph."></canvas>
-            <div id="notice" class="notice" role="status"><span id="notice-text">Loading the Swift engine (about 20 MB). The first visit may take a moment…</span><button id="retry" hidden>Try again</button></div>
+            <div id="notice" class="notice" role="status"><span id="notice-text">Loading the Swift engine. The first visit may take a moment…</span><progress id="loading-progress" aria-labelledby="loading-label"></progress><span id="loading-label" class="loading-label">Downloading Swift engine · 0 B received</span><button id="retry" hidden>Try again</button></div>
             <div class="graph-toolbar" aria-label="Graph controls"><button id="pause" disabled>Pause</button><span class="toolbar-divider"></span><button id="fit" disabled>Fit graph</button><button id="reset" disabled>Reset</button><span id="zoom" aria-label="Zoom level">100%</span></div>
             <div class="graph-footer"><span><i id="status-dot"></i><span id="status">Loading engine</span></span><span>Drag to explore <span class="desktop-hint">· Scroll to zoom</span></span></div>
         </section>
