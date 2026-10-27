@@ -8,3 +8,8 @@ DerivedData/
 .netrc
 /Examples/**/.build
 /Examples/**/.swiftpm
+/Examples/Web/.build
+/Examples/Web/.swiftpm
+/Web/forcegraph.wasm
+/Web/forcegraph.wasm.gz
+/Web/build-info.json

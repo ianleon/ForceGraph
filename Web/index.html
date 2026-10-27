@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b1020">
+    <title>ForceGraph — Swift, set in motion</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./demo.js"></script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">✳</span> ForceGraph <span class="edition">PLAYGROUND</span></a>
+        <div class="header-links"><a class="package-link" href="https://github.com/ianleon/ForceGraph">GitHub ↗</a><span id="engine-badge" class="badge">Loading Swift · Wasm</span></div>
+    </header>
+    <main>
+        <section class="graph-panel" aria-label="Interactive graph playground">
+            <div class="graph-heading"><span class="eyebrow">IDEAS, CONNECTED</span><h1>Give your thoughts<br>some gravity.</h1><p>A native Swift force engine. Right here in your browser.</p></div>
+            <canvas id="graph" tabindex="0" aria-label="Interactive network. Drag nodes to move them, drag empty space to pan, and scroll or pinch to zoom. Use plus and minus to zoom, zero to fit, and left or right arrow keys to select nodes. Use the controls to pause or reset the graph."></canvas>
+            <div id="notice" class="notice" role="status"><span id="notice-text">Loading the Swift engine (about 20 MB). The first visit may take a moment…</span><button id="retry" hidden>Try again</button></div>
+            <div class="graph-toolbar" aria-label="Graph controls"><button id="pause" disabled>Pause</button><span class="toolbar-divider"></span><button id="fit" disabled>Fit graph</button><button id="reset" disabled>Reset</button><span id="zoom" aria-label="Zoom level">100%</span></div>
+            <div class="graph-footer"><span><i id="status-dot"></i><span id="status">Loading engine</span></span><span>Drag to explore <span class="desktop-hint">· Scroll to zoom</span></span></div>
+        </section>
+        <aside class="controls" aria-label="Playground settings">
+            <div><span class="eyebrow">YOUR LITTLE UNIVERSE</span><h2>Make a connection.</h2><p class="muted">Choose a network, tune the forces, then pull on a thread.</p></div>
+            <fieldset id="settings" disabled>
+                <label for="preset">Network</label>
+                <select id="preset"><option value="42">Connected notes · 42 nodes</option><option value="100">Creative constellation · 100 nodes</option><option value="500">A world of ideas · 500 nodes</option><option value="1000">The big picture · 1,000 nodes</option></select>
+                <div class="stats"><div><strong id="node-count">—</strong><span>nodes</span></div><div><strong id="edge-count">—</strong><span>connections</span></div></div>
+                <div class="section-label">THE FORCES</div>
+                <label class="slider-label" for="repulsion">Repulsion <output id="repulsion-value">180</output></label><input id="repulsion" type="range" min="20" max="500" step="10" value="180"><p class="help">Give each idea a little breathing room.</p>
+                <label class="slider-label" for="distance">Link distance <output id="distance-value">75</output></label><input id="distance" type="range" min="25" max="180" step="5" value="75"><p class="help">Bring connected thoughts closer together.</p>
+                <label class="slider-label" for="center">Center gravity <output id="center-value">0.015</output></label><input id="center" type="range" min="0" max="0.05" step="0.001" value="0.015"><p class="help">Keep the bigger picture in view.</p>
+                <button id="reheat" class="primary">↗ Set it in motion</button>
+            </fieldset>
+            <div class="selection"><span class="section-label">IN FOCUS</span><strong id="selected-name">A space for discovery</strong><p id="selected-description" class="muted">Select a node to see where it belongs.</p></div>
+            <div class="legend"><span><i class="cyan"></i>Explore</span><span><i class="violet"></i>Create</span><span><i class="pink"></i>Connect</span></div>
+            <p class="footnote">Real Swift. Real WebAssembly.<br>Synthetic notes. Endless possibilities.</p>
+        </aside>
+    </main>
+</body>
+</html>

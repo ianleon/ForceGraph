@@ -15,6 +15,8 @@ flowchart LR
     View --> Layout[ForceLayout]
     Engine --> Tree[Barnes-Hut quadtree]
     View --> Canvas[SwiftUI Canvas]
+    Browser[HTML Canvas] --> Adapter[Wasm numeric adapter]
+    Adapter --> Engine
 ```
 
 - `Sources/ForceGraph/ForceLayout.swift`: deterministic fixed layout and streaming snapshots.
@@ -26,6 +28,13 @@ flowchart LR
   The `.simulation(...)` modifier selects live interaction; existing callers retain fixed layout.
 - `Tests/ForceGraphTests/`: focused Swift Testing suites for both engines and interaction state.
 - `Sources/ForceGraph/ForceGraph.docc/`, `README.md`, `CHANGELOG.md`: public API documentation.
+- `Examples/Web/` contains a numeric Swift export adapter for the browser demo. `Web/`
+  draws and controls the graph using that compiled engine; never add JavaScript physics.
+  `Tests/Web/` covers the WASI host and cross-runtime conformance. Browser asset limits
+  are 1,000 nodes and 10,000 edges; the native package keeps its own capabilities.
+- `Scripts/build-web-demo.sh` builds the pinned Swift/Wasm SDK locally;
+  `Scripts/publish-web-demo.sh` publishes prebuilt assets on `gh-pages` with `.nojekyll`.
+  Never add hosted CI for this. Generated binaries stay out of the source branch.
 - `Scripts/check.sh`: local platform, test, performance, warning and DocC checks. No hosted CI
   or GitHub Actions. Keep source portable and preserve supported platform minimums.
 

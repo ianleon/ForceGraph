@@ -7,6 +7,13 @@ versions may contain breaking changes.
 
 ## [Unreleased]
 
+### Added
+- A GitHub Pages playground running the real Swift simulation in WebAssembly with HTML
+  Canvas rendering, dragging, pan/zoom, force sliders and synthetic graph presets.
+- Local Wasm build/publish scripts, a minimal browser WASI host and cross-runtime tests
+  comparing coordinates with native Swift. Verified using the official Swift 6.4.1 SDK.
+- Browser demo ABI limits: 1,000 nodes and 10,000 edges. These do not limit native callers.
+
 ## [0.3.0] - 2026-10-26
 
 ### Added

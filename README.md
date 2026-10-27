@@ -12,9 +12,16 @@ node dragging, pan, zoom, fit-to-view and tap handling.
 
 Extracted from Basalt, a Markdown notes app, where it draws the note graph.
 
+**[Try the Swift/WebAssembly playground](https://ianleon.github.io/ForceGraph/)** — drag nodes,
+adjust the forces, and explore networks up to 1,000 nodes. The actual Swift simulation runs
+in your browser; HTML Canvas draws it. The first download includes the Swift runtime.
+
 - `ForceGraphView`: iOS 17, macOS 14 and visionOS 1. `ForceLayout` also builds for
   tvOS 16 and watchOS 9, and uses only Foundation, so it is written to build on Linux
   too (not yet tested there).
+- WebAssembly: the core engine is compiled and tested with the official Swift 6.4.1 Wasm
+  SDK, including comparison against native Swift output. `ForceGraphView` remains Apple-only;
+  the web demo uses HTML Canvas. See [the web example](Examples/Web/README.md).
 - Requires the Swift 6.0 toolchain (Xcode 16 or later); Swift 6 language mode.
 - `ForceLayout` has no UI dependency — drive a `Canvas`, an AppKit view, or a test with it.
 - `ForceLayout` is O(n²) per step, comfortable up to ~1,500 nodes. `ForceSimulation`
