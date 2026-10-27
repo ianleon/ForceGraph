@@ -27,6 +27,26 @@ for (i, id) in simulation.nodes.enumerated() {
 }
 ```
 
+### Use the native view
+
+```swift
+import SwiftUI
+import ForceGraph
+
+ForceGraphView(nodes: ["Inbox", "Projects", "Ideas"],
+               edges: [GraphEdge("Inbox", "Projects"), GraphEdge("Projects", "Ideas")]) { node in
+    print(node)
+}
+.simulation(ObsidianGraphForces.defaults.configuration)
+.nodeLabel { $0 }
+```
+
+Drag a node to hold it under the pointer while its neighbours respond. Releasing lets the
+node move freely again. Drag empty space to pan. Pinch zoom, double-tap fit and `fitTrigger`
+work in both presentations. Without `.simulation(...)`, the original fixed layout is used.
+A settled live view stops requesting animation frames. With Reduce Motion, the view settles
+without animation; the held node still follows the pointer.
+
 ### How a tick works
 
 Each tick follows d3-force exactly:

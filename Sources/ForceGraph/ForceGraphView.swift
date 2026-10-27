@@ -84,6 +84,14 @@ public struct ForceGraphView<ID: Hashable & Sendable>: View {
     private let configuration: ForceLayoutConfiguration
     private let style: ForceGraphStyle
     private let fitTrigger: AnyHashable?
+    var simulationConfiguration: ForceSimulationConfiguration?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var live = LiveGraphController<ID>()
+    @State private var dragStarted = false
+    @State private var draggingNode = false
+    @GestureState private var dragGestureActive = false
+    @GestureState private var magnificationActive = false
+    @State private var suppressDragUntilEnd = false
     // Internal rather than private so tests can check what the initializer and modifiers store.
     let onTap: (ID) -> Void
     var customRadius: (ID) -> CGFloat? = { _ in nil }
@@ -169,6 +177,21 @@ public struct ForceGraphView<ID: Hashable & Sendable>: View {
         return copy
     }
 
+    /// Enables a live simulation with node dragging. Drag empty space to pan; dragging a
+    /// node holds it under the pointer and lets its neighbours respond. Releasing lets the
+    /// graph cool to rest. The existing fixed-layout initializer remains unchanged.
+    ///
+    /// Apply before general SwiftUI view modifiers, like ``nodeLabel(_:)``.
+    public func simulation(_ configuration: ForceSimulationConfiguration = .init()) -> Self {
+        var copy = self
+        copy.simulationConfiguration = configuration
+        return copy
+    }
+
+    private var displayedPositions: [ID: CGPoint] {
+        simulationConfiguration == nil ? positions : live.positions
+    }
+
     // MARK: - Body
 
     public var body: some View {
@@ -184,7 +207,7 @@ public struct ForceGraphView<ID: Hashable & Sendable>: View {
 
                 var edgePath = Path()
                 for edge in drawnEdges {
-                    guard let from = positions[edge.source], let to = positions[edge.target] else { continue }
+                    guard let from = displayedPositions[edge.source], let to = displayedPositions[edge.target] else { continue }
                     let a = toScreen(from), b = toScreen(to)
                     // A segment entirely to one side of the view cannot cross it.
                     if (a.x < visible.minX && b.x < visible.minX) || (a.x > visible.maxX && b.x > visible.maxX)
@@ -197,13 +220,13 @@ public struct ForceGraphView<ID: Hashable & Sendable>: View {
                 context.stroke(edgePath, with: .color(style.edgeColor), lineWidth: style.edgeWidth)
 
                 let showLabels = typicalSpacing * scale >= style.minimumLabelSpacing
-                for node in nodes {
-                    guard let pos = positions[node] else { continue }
+                for node in uniqueNodes {
+                    guard let pos = displayedPositions[node] else { continue }
                     let screen = toScreen(pos)
                     guard visible.contains(screen) else { continue }
                     let r = radius(of: node)
                     let rect = CGRect(x: screen.x - r, y: screen.y - r, width: r * 2, height: r * 2)
-                    context.fill(Path(ellipseIn: rect), with: .color(customColor(node) ?? style.nodeColor))
+                    context.fill(Path(ellipseIn: rect), with: .color(node == live.draggedNode ? .orange : (customColor(node) ?? style.nodeColor)))
                     if showLabels, let text = customLabel(node) {
                         context.draw(
                             Text(text).font(style.labelFont).foregroundStyle(style.labelColor),
@@ -223,19 +246,45 @@ public struct ForceGraphView<ID: Hashable & Sendable>: View {
             }
             .gesture(
                 DragGesture()
+                    .updating($dragGestureActive) { _, active, _ in active = true }
                     .onChanged { value in
+                        guard !magnificationActive, !suppressDragUntilEnd else { return }
                         autoFit = false
-                        panTranslation = value.translation
+                        let start = worldPoint(value.startLocation)
+                        if !dragStarted {
+                            dragStarted = true
+                            if simulationConfiguration != nil, let node = nearestNode(to: start) {
+                                draggingNode = true
+                                live.beginDrag(node, at: start)
+                            }
+                        }
+                        if draggingNode {
+                            live.drag(to: worldPoint(value.location))
+                        } else {
+                            panTranslation = value.translation
+                        }
                     }
                     .onEnded { value in
-                        steadyOffset.width += value.translation.width
-                        steadyOffset.height += value.translation.height
+                        guard dragStarted else { return }
+                        if draggingNode {
+                            live.drag(to: worldPoint(value.location))
+                            live.endDrag()
+                            if reduceMotion { live.settle() }
+                        } else {
+                            steadyOffset.width += value.translation.width
+                            steadyOffset.height += value.translation.height
+                        }
+                        dragStarted = false
+                        draggingNode = false
                         panTranslation = .zero
                     }
             )
             .simultaneousGesture(
                 MagnifyGesture()
+                    .updating($magnificationActive) { _, active, _ in active = true }
                     .onChanged { value in
+                        suppressDragUntilEnd = true
+                        finishInterruptedDrag()
                         autoFit = false
                         zoom(to: steadyScale * value.magnification, anchoredAt: value.startLocation, in: viewSize)
                     }
@@ -251,11 +300,44 @@ public struct ForceGraphView<ID: Hashable & Sendable>: View {
                     Button(customLabel(node) ?? String(describing: node)) { onTap(node) }
                 }
             }
-            .accessibilityLabel(Text("Graph with \(positions.count) nodes"))
+            .accessibilityLabel(Text("Graph with \(displayedPositions.count) nodes"))
             .accessibilityAction(named: Text("Fit to view")) { refit() }
-            .task(id: ForceLayout(nodes: nodes, edges: edges, configuration: configuration)) {
-                await layOut(ForceLayout(nodes: nodes, edges: edges, configuration: configuration))
+            .task(id: GraphViewInput(nodes: nodes, edges: edges, layout: configuration,
+                                     simulation: simulationConfiguration)) {
+                finishInterruptedDrag()
+                let input = ForceLayout(nodes: nodes, edges: edges, configuration: configuration)
+                if let simulationConfiguration {
+                    drawnEdges = input.uniqueEdges
+                    degrees = input.degrees
+                    let firstLayout = live.positions.isEmpty
+                    live.configure(nodes: nodes, edges: edges, configuration: simulationConfiguration)
+                    for node in uniqueNodes {
+                        live.setRadius(Double(radius(of: node)), for: node)
+                    }
+                    if reduceMotion { live.settle() }
+                    if firstLayout { autoFit = true }
+                    if autoFit { fit(in: viewSize) }
+                } else {
+                    live.clear()
+                    await layOut(input)
+                }
             }
+            .task(id: LiveAnimationInput(generation: live.generation, reduceMotion: reduceMotion)) {
+                await animateLiveGraph()
+            }
+            .onChange(of: reduceMotion) { _, enabled in
+                if enabled { live.settle() }
+            }
+            .onChange(of: dragGestureActive) { _, active in
+                if !active {
+                    finishInterruptedDrag()
+                    suppressDragUntilEnd = false
+                }
+            }
+            .onChange(of: magnificationActive) { _, active in
+                if !active, !dragGestureActive { suppressDragUntilEnd = false }
+            }
+            .onDisappear { finishInterruptedDrag() }
             .onChange(of: geo.size, initial: true) { _, newSize in
                 viewSize = newSize
                 if autoFit { fit(in: newSize) }
@@ -294,6 +376,45 @@ public struct ForceGraphView<ID: Hashable & Sendable>: View {
         if !Task.isCancelled { settled = input }
     }
 
+    /// A settled graph suspends until input changes or a new drag wakes its generation.
+    private func animateLiveGraph() async {
+        guard simulationConfiguration != nil else { return }
+        if reduceMotion {
+            live.settle()
+            if autoFit { fit(in: viewSize) }
+            return
+        }
+        while !Task.isCancelled, live.isRunning {
+            live.advance()
+            if autoFit { fit(in: viewSize) }
+            do {
+                try await Task.sleep(for: .milliseconds(16))
+            } catch {
+                return
+            }
+        }
+    }
+
+    /// GestureState resets on cancellation too, unlike DragGesture.onEnded.
+    private func finishInterruptedDrag() {
+        guard dragStarted else { return }
+        if draggingNode {
+            live.endDrag()
+            if reduceMotion { live.settle() }
+        } else {
+            steadyOffset.width += panTranslation.width
+            steadyOffset.height += panTranslation.height
+        }
+        dragStarted = false
+        draggingNode = false
+        panTranslation = .zero
+    }
+
+    private func worldPoint(_ screen: CGPoint) -> CGPoint {
+        let center = viewCenter(in: viewSize)
+        return CGPoint(x: (screen.x - center.x) / scale, y: (screen.y - center.y) / scale)
+    }
+
     // MARK: - Geometry
 
     /// Pan and zoom combined: where the layout origin sits relative to the view's center.
@@ -304,7 +425,10 @@ public struct ForceGraphView<ID: Hashable & Sendable>: View {
 
     /// The layout's characteristic node spacing, `sqrt(area / nodeCount)`, in layout units.
     private var typicalSpacing: CGFloat {
-        (max(configuration.area, 0) / Double(max(positions.count, 1))).squareRoot()
+        if let simulationConfiguration {
+            return LiveGraphGeometry.spacing(for: simulationConfiguration.link.distance)
+        }
+        return (max(configuration.area, 0) / Double(max(positions.count, 1))).squareRoot()
     }
 
     private var uniqueNodes: [ID] {
@@ -342,11 +466,11 @@ public struct ForceGraphView<ID: Hashable & Sendable>: View {
 
     /// Chooses scale and offset so every node (plus padding) is visible.
     private func fit(in size: CGSize) {
-        guard !positions.isEmpty, size.width > 0, size.height > 0 else { return }
+        guard !displayedPositions.isEmpty, size.width > 0, size.height > 0 else { return }
         var minX = CGFloat.infinity, minY = CGFloat.infinity
         var maxX = -CGFloat.infinity, maxY = -CGFloat.infinity
         var maxRadius: CGFloat = 0
-        for (node, p) in positions {
+        for (node, p) in displayedPositions {
             minX = min(minX, p.x); maxX = max(maxX, p.x)
             minY = min(minY, p.y); maxY = max(maxY, p.y)
             maxRadius = max(maxRadius, radius(of: node))
@@ -369,7 +493,8 @@ public struct ForceGraphView<ID: Hashable & Sendable>: View {
 
     private func nearestNode(to point: CGPoint) -> ID? {
         var best: (ID, CGFloat)?
-        for (node, pos) in positions {
+        for node in uniqueNodes {
+            guard let pos = displayedPositions[node] else { continue }
             let d = hypot(pos.x - point.x, pos.y - point.y)
             // Reach is in points; convert to layout units at the current scale.
             let reach = max(radius(of: node) * 1.5, 22) / scale
@@ -379,5 +504,17 @@ public struct ForceGraphView<ID: Hashable & Sendable>: View {
         }
         return best?.0
     }
+}
+/// All inputs affecting the selected engine; presentation changes do not restart it.
+private struct LiveAnimationInput: Hashable {
+    let generation: Int
+    let reduceMotion: Bool
+}
+
+private struct GraphViewInput<ID: Hashable & Sendable>: Hashable {
+    let nodes: [ID]
+    let edges: [GraphEdge<ID>]
+    let layout: ForceLayoutConfiguration
+    let simulation: ForceSimulationConfiguration?
 }
 #endif

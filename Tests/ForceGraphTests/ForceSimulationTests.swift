@@ -592,6 +592,17 @@ private func distance(_ a: CGPoint, _ b: CGPoint) -> Double {
 }
 
 @Suite struct ObsidianGraphForcesTests {
+    @Test func emptyGraphJSONRestoresAllDefaultForces() throws {
+        let forces = try JSONDecoder().decode(ObsidianGraphForces.self, from: Data("{}".utf8))
+
+        #expect(forces.centerStrength == 0.518713248970312)
+        #expect(forces.repelStrength == 10)
+        #expect(forces.linkStrength == 1)
+        #expect(forces.linkDistance == 250)
+        #expect(forces == .defaults)
+        #expect(forces.configuration == ObsidianGraphForces.defaults.configuration)
+    }
+
     @Test func decodesARealGraphJSON() throws {
         let json = """
         {"collapse-filter":true,"search":"","showTags":false,"showAttachments":false,"hideUnresolved":false,

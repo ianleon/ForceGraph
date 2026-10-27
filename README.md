@@ -6,7 +6,7 @@
 A small, dependency-free force-directed graph for Swift: a deterministic
 Fruchterman–Reingold layout you can run anywhere, a live d3-force-style simulation
 with dragging, and a SwiftUI `Canvas` view that animates the layout settling, with
-pan, zoom, fit-to-view and tap handling.
+node dragging, pan, zoom, fit-to-view and tap handling.
 
 ![A ForceGraph layout of a 33-note sample graph: three clusters of blue nodes joined by edges, with hub notes labelled](Docs/hero.png)
 
@@ -26,7 +26,7 @@ In Xcode: *File → Add Package Dependencies…* and enter
 `https://github.com/ianleon/ForceGraph`, or in `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/ianleon/ForceGraph.git", .upToNextMinor(from: "0.2.0")),
+.package(url: "https://github.com/ianleon/ForceGraph.git", .upToNextMinor(from: "0.3.0")),
 ```
 
 and add `.product(name: "ForceGraph", package: "ForceGraph")` to your target's
@@ -50,6 +50,7 @@ struct NotesGraph: View {
         ForceGraphView(nodes: titles, edges: links) { tapped in
             selected = tapped
         }
+        .simulation()
         .nodeLabel { $0 }
         .nodeColor { $0 == selected ? .orange : nil }
     }
@@ -62,6 +63,20 @@ struct NotesGraph: View {
     )
 }
 ```
+
+### Live interaction
+
+The example above opts into the live engine with `.simulation()`. Grab a node to move it;
+its neighbours react while it is held, and the graph settles after release. Drag empty space
+to pan, pinch to zoom, and double-tap or change `fitTrigger` to fit the graph again. The point
+where you grabbed a node stays under the pointer, so picking up its edge does not make it jump.
+The animation stops when the graph cools, and dragging wakes it. Reduce Motion shows settled
+positions instead of an animated layout.
+
+Pass `ObsidianGraphForces.defaults.configuration` to `.simulation(...)` for the package's
+Obsidian-style force settings, or configure `ForceSimulationConfiguration` directly.
+Existing code without the modifier keeps the original fixed-layout behavior. This release
+adds live dragging; it does not claim full Obsidian graph settings or interaction parity.
 
 Edges are undirected: `GraphEdge(a, b)` links two node IDs, and duplicate or
 reversed pairs (`(a, b)` and `(b, a)`) are drawn and simulated once. The trailing
@@ -197,3 +212,13 @@ Derived data goes to `/tmp/ForceGraph-check`. Run it before tagging a release.
 
 MIT. See [LICENSE](LICENSE). `ForceSimulation` ports d3-force and d3-quadtree, ISC
 License; see [NOTICE](NOTICE).
+
+## Run the live demo
+
+```sh
+cd Examples/LiveGraph
+swift run LiveGraphDemo
+```
+
+This macOS example hosts the package's public `ForceGraphView`, with node dragging,
+background panning, pinch zoom, a repulsion slider and Fit/Reset buttons.

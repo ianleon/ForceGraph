@@ -140,7 +140,10 @@ public struct ForceSimulation<ID: Hashable & Sendable>: Sendable {
 
     /// Whether the simulation has cooled below ``ForceSimulationConfiguration/alphaMin``.
     /// ``step()`` does nothing while it is at rest.
-    public var isSettled: Bool { !(alpha >= max(configuration.alphaMin, 0)) }
+    public var isSettled: Bool {
+        let minimum = configuration.alphaMin.isFinite ? max(configuration.alphaMin, 0) : 0.001
+        return !(alpha >= minimum)
+    }
 
     /// The index of `id` in ``nodes``.
     public func index(of id: ID) -> Int? { index[id] }
@@ -283,7 +286,8 @@ public struct ForceSimulation<ID: Hashable & Sendable>: Sendable {
     /// absorbs whatever changed. d3-force's examples reheat to 1 after replacing the data and
     /// to 0.3 for smaller changes.
     public mutating func reheat(to value: Double = 1) {
-        alpha = max(alpha, value)
+        guard value.isFinite, value >= 0 else { return }
+        alpha = alpha.isFinite ? max(alpha, value) : value
     }
 
     // MARK: Fixing and dragging
@@ -315,17 +319,17 @@ public struct ForceSimulation<ID: Hashable & Sendable>: Sendable {
     /// ``ForceSimulationConfiguration/dragAlphaTarget``, so the rest of the graph keeps
     /// responding while it is held. Several nodes can be dragged at once (one per finger).
     public mutating func beginDrag(_ id: ID, at point: CGPoint) {
-        guard index[id] != nil else { return }
+        guard index[id] != nil, point.x.isFinite, point.y.isFinite else { return }
         dragged.insert(id)
         fix(id, at: point)
-        alphaTarget = max(configuration.dragAlphaTarget, 0)
+        alphaTarget = configuration.dragAlphaTarget.isFinite ? max(configuration.dragAlphaTarget, 0) : 0.3
         reheat(to: alphaTarget)
     }
 
     /// Moves a dragged node to `point`. Nodes that are not being dragged are ignored.
     public mutating func drag(_ id: ID, to point: CGPoint) {
-        guard dragged.contains(id), let i = index[id], point.x.isFinite, point.y.isFinite else { return }
-        fx[i] = Double(point.x); fy[i] = Double(point.y)
+        guard dragged.contains(id) else { return }
+        fix(id, at: point)
     }
 
     /// Ends dragging `id`: releases it, so it is not pinned where it was dropped, and once no
@@ -346,7 +350,8 @@ public struct ForceSimulation<ID: Hashable & Sendable>: Sendable {
             radiusOverrides[id] = nil
         }
         radii[i] = nodeRadius(i)
-        collisionRadii[i] = radii[i] + max(configuration.collision.padding, 0)
+        let padding = configuration.collision.padding
+        collisionRadii[i] = radii[i] + (padding.isFinite ? max(padding, 0) : 0)
     }
 
     // MARK: Changing the graph
@@ -366,8 +371,9 @@ public struct ForceSimulation<ID: Hashable & Sendable>: Sendable {
             kept[nodes[i]] = (x[i], y[i], vx[i], vy[i], fx[i], fy[i])
         }
         replaceGraph(nodes: newNodes, edges: newEdges, positions: [:], kept: kept)
+        let wasDragging = !dragged.isEmpty
         dragged = dragged.filter { index[$0] != nil }
-        if dragged.isEmpty, alphaTarget == configuration.dragAlphaTarget { alphaTarget = 0 }
+        if wasDragging, dragged.isEmpty { alphaTarget = 0 }
         self.reheat(to: reheat)
     }
 
@@ -575,7 +581,7 @@ extension ForceSimulation {
             case .degreeBased(let scale):
                 strengths[k] = (scale.isFinite ? max(scale, 0) : 0) / min(s, t)
             case .constant(let value):
-                strengths[k] = value.isFinite ? max(value, 0) : 0
+                strengths[k] = value.isFinite ? min(max(value, 0), 1) : 0
             }
         }
         linkStrength = strengths
@@ -595,7 +601,11 @@ extension ForceSimulation {
     private mutating func tickOnce() {
         let config = configuration
         let decay = config.alphaDecay.isFinite ? min(max(config.alphaDecay, 0), 1) : 0
-        alpha += (alphaTarget - alpha) * decay
+        // Public temperatures may come from malformed saved settings. Recover before
+        // multiplying forces so a single non-finite value cannot poison every node.
+        if !alpha.isFinite { alpha = 1 }
+        let target = alphaTarget.isFinite ? max(alphaTarget, 0) : 0
+        alpha += (target - alpha) * decay
         let alpha = self.alpha
         let n = nodes.count
         tickCount += 1
@@ -664,7 +674,7 @@ extension ForceSimulation {
 
             // Position: a pull toward a point.
             let position = config.position
-            if position.strength != 0, position.strength.isFinite {
+            if position.strength != 0, position.strength.isFinite, position.x.isFinite, position.y.isFinite {
                 let k = position.strength * alpha
                 for i in 0..<n {
                     vx[i] += (position.x - x[i]) * k
@@ -696,7 +706,7 @@ extension ForceSimulation {
 
             // Center: shift everything so the mean lands on the centre.
             let center = config.center
-            if center.strength != 0, center.strength.isFinite {
+            if center.strength != 0, center.strength.isFinite, center.x.isFinite, center.y.isFinite {
                 var sx = 0.0, sy = 0.0
                 for i in 0..<n { sx += x[i]; sy += y[i] }
                 sx = (sx / Double(n) - center.x) * center.strength

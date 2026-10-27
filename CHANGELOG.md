@@ -7,7 +7,15 @@ versions may contain breaking changes.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-26
+
 ### Added
+- `.simulation(...)` on `ForceGraphView` opts into the live engine. Drag nodes to move
+  them while neighbours react, release to settle, and drag empty space to pan. Existing
+  fixed-layout callers keep their behavior. Preserves the pointer's grab offset.
+- Live interaction respects Reduce Motion, cancels on disappearance and sleeps when settled.
+- Focused controller tests and simulation regression coverage for invalid inputs, update
+  semantics, final pointer positions and collision configuration.
 - `ForceSimulation`, a live force simulation ported from d3-force, next to `ForceLayout`:
   alpha, `alphaMin`, `alphaDecay`, `alphaTarget` and `velocityDecay` with d3's defaults;
   `tick(_:)`, `step()` (ticks while warm and reports whether it is still running),
@@ -92,6 +100,7 @@ versions may contain breaking changes.
   accessibility children, for iOS 17, macOS 14 and visionOS 1.
 - `ForceGraphStyle`.
 
-[Unreleased]: https://github.com/ianleon/ForceGraph/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/ianleon/ForceGraph/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/ianleon/ForceGraph/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/ianleon/ForceGraph/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/ianleon/ForceGraph/releases/tag/0.1.0
