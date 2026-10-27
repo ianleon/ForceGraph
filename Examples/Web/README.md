@@ -23,7 +23,8 @@ module, writes a source/hash manifest, and runs the Node test suite. Generated b
 out of the source branch. Serve through HTTP, because browsers cannot fetch Wasm from file URLs.
 
 The full Swift and Foundation runtime makes the initial download substantial (about 20 MB
-gzipped with the pinned SDK). The browser caches the static assets. No private vault data,
+gzipped with the pinned SDK). The browser caches the static assets. A loading bar reports downloaded bytes and then
+shows compilation and startup as separate indeterminate stages. No private vault data,
 external fonts, analytics, remote simulation service, or third-party JavaScript is involved.
 
 ## Browser bridge

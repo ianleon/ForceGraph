@@ -308,7 +308,40 @@ function resizeCanvas() {
     requestFrame();
 }
 
+function formatBytes(bytes) {
+    if (bytes < 1000) return `${bytes} B`;
+    if (bytes < 1000000) return `${(bytes / 1000).toFixed(1)} kB`;
+    return `${(bytes / 1000000).toFixed(1)} MB`;
+}
+
+function updateLoadingProgress({ phase, loaded, total }) {
+    const progress = element('loading-progress');
+    const label = element('loading-label');
+    progress.hidden = phase === 'ready';
+    label.hidden = phase === 'ready';
+    progress.removeAttribute('value');
+    progress.removeAttribute('aria-valuetext');
+    label.textContent = '';
+    if (phase === 'ready') return;
+
+    if (phase === 'download') {
+        const bytes = formatBytes(loaded);
+        if (total !== null) {
+            // Keep the bar at byte precision; round only the displayed percentage.
+            progress.max = total;
+            progress.value = loaded;
+            label.textContent = `Downloading Swift engine · ${Math.floor(loaded / total * 100)}% · ${bytes} of ${formatBytes(total)}`;
+        } else {
+            label.textContent = `Downloading Swift engine · ${bytes} received`;
+        }
+    } else {
+        label.textContent = phase === 'compile' ? 'Compiling Swift engine…' : 'Initializing Swift engine…';
+    }
+    progress.setAttribute('aria-valuetext', label.textContent);
+}
+
 function showFailure(error) {
+    updateLoadingProgress({ phase: 'ready', loaded: 0, total: null });
     cancelAnimationFrame(frame);
     frame = 0;
     finishGesture();
@@ -329,11 +362,14 @@ async function loadEngine() {
     if (loading) return;
     loading = true;
     element('retry').hidden = true;
-    element('notice-text').textContent = 'Loading the Swift engine (about 20 MB). The first visit may take a moment…';
+    element('notice').hidden = false;
+    updateLoadingProgress({ phase: 'download', loaded: 0, total: null });
+    element('notice-text').textContent = 'Loading the Swift engine. The first visit may take a moment…';
     try {
         const { WasmForceGraph } = await import('./engine.js');
-        engine = await WasmForceGraph.load(new URL('./forcegraph.wasm.gz', import.meta.url));
+        engine = await WasmForceGraph.load(new URL('./forcegraph.wasm.gz', import.meta.url), updateLoadingProgress);
         resetNetwork();
+        updateLoadingProgress({ phase: 'ready', loaded: 0, total: null });
         element('notice').hidden = true;
         element('settings').disabled = false;
         for (const id of ['pause', 'fit', 'reset']) element(id).disabled = false;

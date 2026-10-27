@@ -255,3 +255,48 @@ test('loader detects gzip bytes, decompresses modules, and explains missing brow
     globalThis.fetch = async () => ({ ok: true, arrayBuffer: async () => new Uint8Array([0x1f, 0x8b, 0]) });
     await assert.rejects(WasmForceGraph.load('corrupt.wasm.gz'));
 });
+
+test('loading reports streamed bytes, known and unknown totals, and startup phases', async t => {
+    const originalFetch = globalThis.fetch;
+    t.after(() => { globalThis.fetch = originalFetch; });
+    const bytes = new Uint8Array(wasmFixture());
+    for (const length of [String(bytes.length), null, 'invalid', '0', '-1']) {
+        let released = false;
+        const chunks = [bytes.subarray(0, 10), bytes.subarray(10)];
+        globalThis.fetch = async () => ({
+            ok: true,
+            headers: new Headers(length === null ? {} : { 'content-length': length }),
+            body: { getReader: () => ({
+                read: async () => chunks.length ? { done: false, value: chunks.shift() } : { done: true },
+                releaseLock: () => { released = true; },
+            }) },
+        });
+        const events = [];
+        const engine = await WasmForceGraph.load('progress.wasm', event => events.push(event));
+        assert.equal(engine.step(), true);
+        assert.equal(released, true);
+        assert.deepEqual(events.map(event => event.phase), ['download', 'download', 'download', 'compile', 'initialize', 'ready']);
+        assert.deepEqual(events.slice(0, 3).map(event => event.loaded), [0, 10, bytes.length]);
+        assert.ok(events.slice(0, 3).every(event => event.total === (length === String(bytes.length) ? bytes.length : null)));
+    }
+});
+
+test('loading reports fallback downloads and releases the stream on read errors', async t => {
+    const originalFetch = globalThis.fetch;
+    t.after(() => { globalThis.fetch = originalFetch; });
+    const bytes = wasmFixture();
+    globalThis.fetch = async () => ({ ok: true, arrayBuffer: async () => bytes });
+    const events = [];
+    await WasmForceGraph.load('fallback.wasm', event => events.push(event));
+    assert.deepEqual(events.slice(0, 2), [
+        { phase: 'download', loaded: 0, total: null },
+        { phase: 'download', loaded: bytes.byteLength, total: null },
+    ]);
+    let released = false;
+    globalThis.fetch = async () => ({ ok: true, body: { getReader: () => ({
+        read: async () => { throw new Error('Connection interrupted'); },
+        releaseLock: () => { released = true; },
+    }) } });
+    await assert.rejects(WasmForceGraph.load('broken.wasm'), /Connection interrupted/);
+    assert.equal(released, true);
+});

@@ -151,8 +151,39 @@ function finite(value, label) {
     return value;
 }
 
-async function moduleBytes(response) {
-    const bytes = new Uint8Array(await response.arrayBuffer());
+async function downloadBytes(response, onProgress) {
+    const contentLength = Number(response.headers?.get('content-length'));
+    const total = Number.isFinite(contentLength) && contentLength > 0 ? contentLength : null;
+    let loaded = 0;
+    onProgress({ phase: 'download', loaded, total });
+    if (!response.body) {
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        onProgress({ phase: 'download', loaded: bytes.byteLength, total });
+        return bytes;
+    }
+    const reader = response.body.getReader();
+    const chunks = [];
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            loaded += value.byteLength;
+            onProgress({ phase: 'download', loaded, total });
+        }
+    } finally {
+        reader.releaseLock();
+    }
+    const bytes = new Uint8Array(loaded);
+    let offset = 0;
+    for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+    return bytes;
+}
+
+async function moduleBytes(bytes) {
     if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) return bytes;
     if (typeof globalThis.DecompressionStream !== 'function') {
         throw new Error('Loading gzip-compressed ForceGraph Wasm requires browser DecompressionStream support');
@@ -162,10 +193,13 @@ async function moduleBytes(response) {
 }
 
 export class WasmForceGraph {
-    static async load(url) {
+    static async load(url, onProgress = () => {}) {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Unable to fetch ForceGraph Wasm: HTTP ${response.status}`);
-        const module = await WebAssembly.compile(await moduleBytes(response));
+        const bytes = await downloadBytes(response, onProgress);
+        onProgress({ phase: 'compile', loaded: bytes.byteLength, total: bytes.byteLength });
+        const module = await WebAssembly.compile(await moduleBytes(bytes));
+        onProgress({ phase: 'initialize', loaded: bytes.byteLength, total: bytes.byteLength });
         const wasi = new WasiPreview1();
         const instance = await WebAssembly.instantiate(module, wasi.importsFor(module));
         const engine = new WasmForceGraph(instance.exports);
@@ -178,6 +212,7 @@ export class WasmForceGraph {
                 if (!(error instanceof WasiExit) || error.code !== 0) throw error;
             }
         }
+        onProgress({ phase: 'ready', loaded: bytes.byteLength, total: bytes.byteLength });
         return engine;
     }
 

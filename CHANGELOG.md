@@ -8,6 +8,7 @@ versions may contain breaking changes.
 ## [Unreleased]
 
 ### Added
+- Browser loading progress with streamed download bytes and separate compilation/startup states.
 - A GitHub Pages playground running the real Swift simulation in WebAssembly with HTML
   Canvas rendering, dragging, pan/zoom, force sliders and synthetic graph presets.
 - Local Wasm build/publish scripts, a minimal browser WASI host and cross-runtime tests

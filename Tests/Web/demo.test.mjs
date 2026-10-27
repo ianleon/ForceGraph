@@ -18,7 +18,9 @@ function playground({ reducedMotion = false, viewportWidth = 948, viewportHeight
             value: ({ preset: '42', repulsion: '180', distance: '75', center: '.015' })[id] ?? '',
             listeners: {},
             addEventListener(name, callback) { this.listeners[name] = callback; },
-            setAttribute() {},
+            attributes: {},
+            setAttribute(name, value) { this.attributes[name] = value; },
+            removeAttribute(name) { delete this.attributes[name]; if (name === 'value') delete this.value; },
             classList: { toggle() {}, add() {}, remove() {} },
             getBoundingClientRect: () => rectangle,
             getContext: () => drawing,
@@ -42,7 +44,7 @@ function playground({ reducedMotion = false, viewportWidth = 948, viewportHeight
         console,
     });
     // Suppress asynchronous loading only; all tested functions remain unchanged.
-    vm.runInContext(source.replaceAll('import.meta.url', "'https://example.test/demo.js'").replace(/loadEngine\(\);\s*$/, ''), sandbox);
+    vm.runInContext(source.replaceAll('import.meta.url', "'https://example.test/demo.js'").replace(/loadEngine\(\);\s*$/, ''), sandbox, { filename: 'forcegraph-demo-ui.js' });
     const run = (expression) => vm.runInContext(expression, sandbox);
     run(`globalThis.calls = []; engine = {
         reset: (...args) => calls.push(['reset', ...args]),
@@ -237,4 +239,60 @@ test('node radii, hub labels, and hit targets stay constant in screen points at 
         assert.equal(app.run(`hitNode({ x: ${200 * scale + 12.7}, y: 0 })`), 1);
         assert.equal(app.run(`hitNode({ x: ${200 * scale + 12.9}, y: 0 })`), -1);
     }
+});
+
+test('download progress uses byte precision and friendly byte units', () => {
+    const app = playground();
+    for (const [loaded, total, description] of [
+        [0, 300, '0% · 0 B of 300 B'],
+        [1, 300, '0% · 1 B of 300 B'],
+        [1250, 5000, '25% · 1.3 kB of 5.0 kB'],
+        [1500000, 2000000, '75% · 1.5 MB of 2.0 MB'],
+        [2000000, 2000000, '100% · 2.0 MB of 2.0 MB'],
+    ]) {
+        app.run(`updateLoadingProgress({ phase: 'download', loaded: ${loaded}, total: ${total} })`);
+        assert.equal(app.run("element('loading-progress').value"), loaded);
+        assert.equal(app.run("element('loading-progress').max"), total);
+        assert.equal(app.run("element('loading-progress').hidden"), false);
+        assert.equal(app.run("element('loading-label').textContent"), `Downloading Swift engine · ${description}`);
+        assert.equal(app.run("element('loading-progress').attributes['aria-valuetext']"), `Downloading Swift engine · ${description}`);
+    }
+});
+
+test('unknown download size and compile and initialize phases are indeterminate', () => {
+    const app = playground();
+    for (const [phase, total, label] of [
+        ['download', null, 'Downloading Swift engine · 2.0 kB received'],
+        ['compile', 4000, 'Compiling Swift engine…'],
+        ['initialize', 4000, 'Initializing Swift engine…'],
+    ]) {
+        app.run("updateLoadingProgress({ phase: 'download', loaded: 1000, total: 4000 })");
+        app.run(`updateLoadingProgress({ phase: '${phase}', loaded: 2000, total: ${total} })`);
+        assert.equal(app.run("element('loading-progress').value"), undefined);
+        assert.equal(app.run("element('loading-progress').hidden"), false);
+        assert.equal(app.run("element('loading-label').hidden"), false);
+        assert.equal(app.run("element('loading-label').textContent"), label);
+    }
+});
+
+test('ready clears progress and a new attempt resets the previous download', () => {
+    const app = playground();
+    app.run("updateLoadingProgress({ phase: 'download', loaded: 900, total: 1000 }); updateLoadingProgress({ phase: 'ready', loaded: 1000, total: 1000 })");
+    assert.equal(app.run("element('loading-progress').hidden"), true);
+    assert.equal(app.run("element('loading-label').hidden"), true);
+    assert.equal(app.run("element('loading-label').textContent"), '');
+    assert.equal(app.run("element('loading-progress').value"), undefined);
+    assert.equal(app.run("element('loading-progress').attributes['aria-valuetext']"), undefined);
+    app.run("updateLoadingProgress({ phase: 'download', loaded: 0, total: null })");
+    assert.equal(app.run("element('loading-progress').hidden"), false);
+    assert.equal(app.run("element('loading-label').textContent"), 'Downloading Swift engine · 0 B received');
+});
+
+test('failure hides and clears loading progress', () => {
+    const app = playground();
+    app.run("console.error = () => {}; updateLoadingProgress({ phase: 'download', loaded: 500, total: 1000 }); showFailure(new Error('offline'))");
+    assert.equal(app.run("element('loading-progress').hidden"), true);
+    assert.equal(app.run("element('loading-label').hidden"), true);
+    assert.equal(app.run("element('loading-label').textContent"), '');
+    assert.equal(app.run("element('retry').hidden"), false);
 });
